@@ -1,0 +1,34 @@
+# Ignore below files
+
+*.csv
+*.xlsx
+*.xls
+*.docx
+*.doc
+*.pdf
+*.txt
+*.log
+
+# Ignore below folders
+
+.ipynb_checkpoints/
+
+# Ignore below files and folders
+
+.DS_Store
+
+# Ignore below files and folders
+
+__pycache__/
+.vscode/
+.idea/
+.pytest_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+.cache/
+.pylint.d/
+.tox/
+.nox/
+.venv/
+*.json
