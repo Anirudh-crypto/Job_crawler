@@ -48,6 +48,13 @@ Optional flags:
 - `--email-to someone@example.com` (repeatable, defaults to `GMAIL_USER`)
 - `--email-subject "My Job Report"` (optional subject prefix)
 
+## No-Args Defaults (GitHub Actions)
+
+If you run `python crawler.py` with no args, defaults are pulled from:
+
+- `job_crawler/config.py` (default locations and email settings)
+- `companies.json` (fallback to `companies.example.json` if missing)
+
 Example for your use case:
 
 ```bash

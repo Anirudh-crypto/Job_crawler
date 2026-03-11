@@ -10,6 +10,7 @@ from typing import Iterable
 
 import smtplib
 
+from .config import DEFAULT_EMAIL_RECIPIENTS
 
 @dataclass(frozen=True)
 class EmailConfig:
@@ -31,7 +32,7 @@ def load_gmail_config(recipients: list[str] | None) -> EmailConfig:
 
     to_list = [item.strip() for item in (recipients or []) if item.strip()]
     if not to_list:
-        to_list = [smtp_user]
+        to_list = [item for item in DEFAULT_EMAIL_RECIPIENTS if item.strip()] or [smtp_user]
 
     return EmailConfig(
         smtp_host="smtp.gmail.com",

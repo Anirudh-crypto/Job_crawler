@@ -6,6 +6,14 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+from .config import (
+    DEFAULT_COMPANIES_FILE,
+    DEFAULT_EMAIL_RECIPIENTS,
+    DEFAULT_EMAIL_SUBJECT,
+    DEFAULT_LOCATIONS,
+    DEFAULT_SEND_EMAIL,
+    FALLBACK_COMPANIES_FILE,
+)
 from .emailer import send_email_from_csv
 from .io_utils import parse_company_targets, write_csv, write_markdown
 from .location import LocationFilter
@@ -21,8 +29,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--companies",
-        required=True,
         type=Path,
+        default=DEFAULT_COMPANIES_FILE,
         help="Path to JSON file containing company names and careers URLs.",
     )
     parser.add_argument(
@@ -58,7 +66,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--location",
         action="append",
-        default=[],
+        default=None,
         help=(
             "Location filter (repeatable). Example: --location Germany --location Bengaluru. "
             "For Workday this uses API facets when available."
@@ -66,18 +74,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--send-email",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=DEFAULT_SEND_EMAIL,
         help="Send an email with the CSV contents using Gmail SMTP.",
     )
     parser.add_argument(
         "--email-to",
         action="append",
-        default=[],
-        help="Email recipient (repeatable). Defaults to GMAIL_USER if omitted.",
+        default=None,
+        help="Email recipient (repeatable). Defaults to config if omitted.",
     )
     parser.add_argument(
         "--email-subject",
-        default="",
+        default=DEFAULT_EMAIL_SUBJECT,
         help="Optional subject prefix for the email.",
     )
     return parser
@@ -87,13 +96,18 @@ def main() -> int:
     parser = build_arg_parser()
     args = parser.parse_args()
 
+    companies_file = args.companies
+    if not companies_file.exists() and FALLBACK_COMPANIES_FILE.exists():
+        companies_file = FALLBACK_COMPANIES_FILE
+
     try:
-        targets = parse_company_targets(args.companies)
+        targets = parse_company_targets(companies_file)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         print(f"Error reading company list: {exc}", file=sys.stderr)
         return 2
 
-    location_filter = LocationFilter(args.location)
+    raw_locations = args.location if args.location is not None else DEFAULT_LOCATIONS
+    location_filter = LocationFilter(raw_locations)
     service = JobCrawlerService(
         timeout_seconds=max(1, args.timeout_seconds),
         max_pages_per_company=max(1, args.max_pages_per_company),
@@ -135,7 +149,7 @@ def main() -> int:
         send_email_from_csv(
             csv_path=args.output_csv,
             subject_prefix=args.email_subject,
-            recipients=args.email_to,
+            recipients=args.email_to or DEFAULT_EMAIL_RECIPIENTS,
         )
         print("Email sent.")
     return 0

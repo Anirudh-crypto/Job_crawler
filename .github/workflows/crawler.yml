@@ -2,12 +2,16 @@ name: Job Crawler
 
 on:
   schedule:
-    - cron: "0 9 * * 1-5"   # runs every 6 hours
+    - cron: "0 9 * * 1-5"   # runs daily on weekdays at 09:00 UTC
   workflow_dispatch:
 
 jobs:
   run-crawler:
     runs-on: ubuntu-latest
+
+    env:
+      GMAIL_USER: ${{ secrets.GMAIL_USER }}
+      GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
 
     steps:
       - name: Checkout repo
