@@ -6,7 +6,6 @@
 *.docx
 *.doc
 *.pdf
-*.txt
 *.log
 
 # Ignore below folders
