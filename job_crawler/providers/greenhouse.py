@@ -6,6 +6,7 @@ from urllib.parse import parse_qsl, urlparse
 from ..http_client import HttpClient
 from ..models import CompanyTarget, JobResult
 from ..relevance import JobRelevance
+from ..dates import parse_iso_datetime
 from ..text import extract_job_id, normalize_url
 
 
@@ -43,6 +44,7 @@ class GreenhouseProvider:
             title = str(item.get("title", "")).strip()
             url = str(item.get("absolute_url", "")).strip()
             location = str(item.get("location", {}).get("name", "")).strip()
+            posted_at = parse_iso_datetime(str(item.get("updated_at") or item.get("created_at") or ""))
             if not title or not url:
                 continue
             if not self.relevance.is_relevant(title):
@@ -64,6 +66,7 @@ class GreenhouseProvider:
                     location=location,
                     job_id=str(item.get("requisition_id") or item.get("id") or "") or extract_job_id(title),
                     careers_url=target.careers_url,
+                    posted_at=posted_at,
                 )
             )
         return jobs

@@ -7,6 +7,7 @@
 *.doc
 *.pdf
 *.log
+.env
 
 # Ignore below folders
 
@@ -30,4 +31,4 @@ __pycache__/
 .tox/
 .nox/
 .venv/
-*.json
+

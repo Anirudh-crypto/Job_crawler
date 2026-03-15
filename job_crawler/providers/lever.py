@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from ..http_client import HttpClient
 from ..models import CompanyTarget, JobResult
 from ..relevance import JobRelevance
+from ..dates import parse_epoch_ms, parse_iso_datetime
 from ..text import extract_job_id, normalize_url
 
 
@@ -38,6 +39,9 @@ class LeverProvider:
             title = str(item.get("text", "")).strip()
             url = str(item.get("hostedUrl", "")).strip()
             location = str(item.get("categories", {}).get("location", "")).strip()
+            posted_at = parse_epoch_ms(item.get("createdAt")) or parse_iso_datetime(
+                str(item.get("createdAt") or "")
+            )
             if not title or not url:
                 continue
             if not self.relevance.is_relevant(title):
@@ -59,6 +63,7 @@ class LeverProvider:
                     location=location,
                     job_id=str(item.get("reqCode") or item.get("id") or "") or extract_job_id(title),
                     careers_url=target.careers_url,
+                    posted_at=posted_at,
                 )
             )
         return jobs

@@ -25,13 +25,19 @@ class HttpClient:
         except requests.RequestException:
             return None
 
-    def post_json(self, url: str, payload: dict[str, Any]) -> requests.Response | None:
+    def post_json(
+        self,
+        url: str,
+        payload: dict[str, Any],
+        headers: dict[str, str] | None = None,
+    ) -> requests.Response | None:
         try:
             response = self.session.post(
                 url,
                 json=payload,
                 timeout=self.timeout_seconds,
                 allow_redirects=True,
+                headers=headers,
             )
             if response.status_code >= 400:
                 return None

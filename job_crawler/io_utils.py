@@ -28,13 +28,20 @@ def parse_company_targets(path: Path) -> list[CompanyTarget]:
         elif isinstance(record, dict):
             name = (record.get("name") or "").strip()
             url = (record.get("careers_url") or record.get("url") or "").strip()
+            api_post = record.get("api_post")
         else:
             continue
 
         if not name or not url or not is_allowed_url(url):
             continue
 
-        targets.append(CompanyTarget(name=name, careers_url=normalize_url(url)))
+        targets.append(
+            CompanyTarget(
+                name=name,
+                careers_url=normalize_url(url),
+                api_post=api_post if isinstance(api_post, dict) else None,
+            )
+        )
 
     if not targets:
         raise ValueError("No valid companies found in input file.")

@@ -4,6 +4,7 @@ import json
 from typing import Any
 from urllib.parse import urlparse
 
+from ..dates import parse_workday_posted
 from ..http_client import HttpClient
 from ..location import LocationFilter
 from ..models import CompanyTarget, JobResult
@@ -137,6 +138,7 @@ class WorkdayProvider:
             )
 
         location = str(item.get("locationsText", "")).strip()
+        posted_at = parse_workday_posted(str(item.get("postedOn", "") or ""))
         job_id = ""
         for entry in item.get("bulletFields", []) or []:
             job_id = extract_job_id(str(entry))
@@ -153,6 +155,7 @@ class WorkdayProvider:
             location=location,
             job_id=job_id,
             careers_url=target.careers_url,
+            posted_at=posted_at,
         )
         if self.location_filter.enabled and not self.location_filter.matches_job(job):
             return None

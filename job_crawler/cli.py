@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -11,9 +12,13 @@ from .config import (
     DEFAULT_EMAIL_RECIPIENTS,
     DEFAULT_EMAIL_SUBJECT,
     DEFAULT_LOCATIONS,
+    DEFAULT_MAX_AGE_DAYS,
+    DEFAULT_MAX_PAGES_PER_COMPANY,
     DEFAULT_SEND_EMAIL,
+    DEFAULT_ENABLE_PLAYWRIGHT_FALLBACK,
     FALLBACK_COMPANIES_FILE,
 )
+from dotenv import load_dotenv
 from .emailer import send_email_from_csv
 from .io_utils import parse_company_targets, write_csv, write_markdown
 from .location import LocationFilter
@@ -48,7 +53,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-pages-per-company",
         type=int,
-        default=20,
+        default=DEFAULT_MAX_PAGES_PER_COMPANY,
         help="Maximum number of pages to crawl per company careers site.",
     )
     parser.add_argument(
@@ -56,6 +61,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=int,
         default=15,
         help="HTTP request timeout in seconds.",
+    )
+    parser.add_argument(
+        "--max-age-days",
+        type=int,
+        default=DEFAULT_MAX_AGE_DAYS,
+        help="Only keep jobs posted within this many days (0 disables).",
     )
     parser.add_argument(
         "--workers",
@@ -93,6 +104,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    load_dotenv()
     parser = build_arg_parser()
     args = parser.parse_args()
 
@@ -108,10 +120,19 @@ def main() -> int:
 
     raw_locations = args.location if args.location is not None else DEFAULT_LOCATIONS
     location_filter = LocationFilter(raw_locations)
+    debug_mode = os.getenv("JOB_CRAWLER_DEBUG", "").strip().lower() in {"1", "true", "yes"}
+    debug_file = None
+    if debug_mode:
+        debug_file_name = os.getenv("JOB_CRAWLER_DEBUG_FILE", "debug.log").strip() or "debug.log"
+        debug_file = Path(debug_file_name)
     service = JobCrawlerService(
         timeout_seconds=max(1, args.timeout_seconds),
         max_pages_per_company=max(1, args.max_pages_per_company),
         location_filter=location_filter,
+        max_age_days=args.max_age_days if args.max_age_days and args.max_age_days > 0 else None,
+        enable_playwright_fallback=DEFAULT_ENABLE_PLAYWRIGHT_FALLBACK,
+        debug=debug_mode,
+        debug_file=debug_file,
     )
 
     all_jobs: list[JobResult] = []
@@ -122,7 +143,7 @@ def main() -> int:
             try:
                 jobs = future.result()
                 all_jobs.extend(jobs)
-                print(f"[{target.name}] found {len(jobs)} relevant jobs")
+                # print(f"[{target.name}] found {len(jobs)} relevant jobs")
             except Exception as exc:  # noqa: BLE001
                 print(f"[{target.name}] failed: {exc}", file=sys.stderr)
 
@@ -138,7 +159,7 @@ def main() -> int:
 
     location_note = ""
     if location_filter.enabled:
-        location_note = f" after location filtering ({', '.join(args.location)})"
+        location_note = f" after location filtering ({', '.join(raw_locations)})"
 
     print(
         f"Saved {len(final_jobs)} jobs to {args.output_csv} and {args.output_md} "

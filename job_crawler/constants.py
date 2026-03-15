@@ -77,6 +77,10 @@ KNOWN_JOB_HOST_MARKERS = (
     "ashbyhq.com",
     "jobvite.com",
     "icims.com",
+    "oraclecloud.com",
+    "careers.oracle.com",
+    "jobs.sap.com",
+    "successfactors.com",
 )
 
 # Keys and values are normalized with normalize_text.

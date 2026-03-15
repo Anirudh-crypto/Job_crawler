@@ -17,6 +17,7 @@ It reads a company list JSON file, crawls each careers site, filters relevant jo
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+python -m playwright install
 ```
 
 ## Input Format
@@ -32,6 +33,7 @@ Use a JSON file like `companies.example.json`:
 }
 ```
 
+
 ## Run
 
 ```bash
@@ -42,6 +44,7 @@ Optional flags:
 
 - `--max-pages-per-company 20`
 - `--timeout-seconds 15`
+- `--max-age-days 2` (only keep jobs posted within the last N days; 0 disables)
 - `--workers 5`
 - `--location Germany --location Bengaluru` (keep only matching locations)
 - `--send-email` (send the CSV results via Gmail SMTP)
@@ -63,11 +66,21 @@ python crawler.py --companies companies.example.json --output-csv jobs.csv --out
 
 ## Email (Gmail SMTP)
 
-Set Gmail credentials as environment variables:
+Set Gmail credentials as environment variables (or via `.env`):
 
 ```bash
 setx GMAIL_USER "your.email@gmail.com"
 setx GMAIL_APP_PASSWORD "your_app_password"
+```
+
+
+Optional `.env` file (same keys):
+
+```
+GMAIL_USER=your.email@gmail.com
+GMAIL_APP_PASSWORD=your_app_password
+JOB_CRAWLER_DEBUG=1
+JOB_CRAWLER_DEBUG_FILE=debug.log
 ```
 
 Then run:
@@ -83,10 +96,11 @@ python crawler.py --companies companies.example.json --output-csv jobs.csv --out
 
 ## Notes
 
-- The crawler supports general HTML pages plus direct APIs for Greenhouse, Lever, and Workday links.
+- The crawler supports general HTML pages plus direct APIs for Greenhouse, Lever, Workday, Oracle ORC (best-effort), iCIMS, and SuccessFactors job boards.
 - For Workday targets, `--location` uses Workday `appliedFacets` (server-side location filtering) when facet data is available.
-- Some careers pages are heavily JavaScript-rendered and may need a browser-based crawler (Playwright/Selenium) for full coverage.
+- Playwright is used as a fallback when a company returns 0 jobs after filtering; it renders JavaScript pages to capture job links.
 - If a company website blocks bots (HTTP 403), use that company's direct ATS URL (for example Greenhouse/Lever/Workday careers page) in your input list.
+- The crawler attempts to auto-resolve known ATS links from a company careers page (Workday/Greenhouse/Lever) before crawling.
 
 ## Project Structure
 
