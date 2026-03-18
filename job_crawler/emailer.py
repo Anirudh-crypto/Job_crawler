@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-import csv
 import os
 from dataclasses import dataclass
 from datetime import datetime
 from email.message import EmailMessage
-from pathlib import Path
 from typing import Iterable
 
 import smtplib
 
 from .config import DEFAULT_EMAIL_RECIPIENTS
+from .models import JobResult
 
 @dataclass(frozen=True)
 class EmailConfig:
@@ -42,17 +41,11 @@ def load_gmail_config(recipients: list[str] | None) -> EmailConfig:
         sender=smtp_user,
         recipients=to_list,
     )
-
-
-def load_csv_rows(path: Path) -> list[dict[str, str]]:
-    with path.open("r", newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
-        return [row for row in reader]
-
-
 def build_email_subject(prefix: str | None, total_jobs: int) -> str:
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
     title = prefix.strip() if prefix else "Job Crawler Results"
+    if total_jobs == 0:
+        return f"{title} - No new jobs ({timestamp})"
     return f"{title} - {total_jobs} jobs ({timestamp})"
 
 
@@ -67,7 +60,7 @@ def format_plain_text(rows: Iterable[dict[str, str]]) -> str:
         lines.append(f"Source: {row.get('source','')}")
         lines.append("")
     if len(lines) == 2:
-        lines.append("No jobs found.")
+        lines.append("No new jobs posted.")
     return "\n".join(lines).rstrip()
 
 
@@ -105,7 +98,7 @@ def format_html(rows: Iterable[dict[str, str]]) -> str:
         )
     if count == 0:
         rows_html.append(
-            '<tr><td colspan="6" align="center">No jobs found.</td></tr>'
+            '<tr><td colspan="6" align="center">No new jobs posted.</td></tr>'
         )
 
     footer = """
@@ -117,12 +110,28 @@ def format_html(rows: Iterable[dict[str, str]]) -> str:
     return header + "\n".join(rows_html) + footer
 
 
-def send_email_from_csv(
-    csv_path: Path,
+def jobs_to_rows(jobs: Iterable[JobResult]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for job in jobs:
+        rows.append(
+            {
+                "company": job.company,
+                "title": job.title,
+                "location": job.location,
+                "job_id": job.job_id,
+                "careers_url": job.careers_url,
+                "source": job.source,
+            }
+        )
+    return rows
+
+
+def send_email(
+    jobs: Iterable[JobResult],
     subject_prefix: str | None,
     recipients: list[str] | None,
 ) -> None:
-    rows = load_csv_rows(csv_path)
+    rows = jobs_to_rows(jobs)
     subject = build_email_subject(subject_prefix, total_jobs=len(rows))
     text_body = format_plain_text(rows)
     html_body = format_html(rows)

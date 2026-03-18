@@ -2,7 +2,7 @@ name: Job Crawler
 
 on:
   schedule:
-    - cron: "0 9 * * 1-5"   # runs daily on weekdays at 09:00 UTC
+    - cron: "0 8 * * 1-5"   # runs daily on weekdays at 09:00 UTC
   workflow_dispatch:
 
 jobs:
@@ -12,6 +12,8 @@ jobs:
     env:
       GMAIL_USER: ${{ secrets.GMAIL_USER }}
       GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
 
     steps:
       - name: Checkout repo

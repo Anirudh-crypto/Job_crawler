@@ -11,19 +11,22 @@ from .config import (
     DEFAULT_COMPANIES_FILE,
     DEFAULT_EMAIL_RECIPIENTS,
     DEFAULT_EMAIL_SUBJECT,
+    DEFAULT_ENABLE_PLAYWRIGHT_FALLBACK,
+    DEFAULT_ENABLE_SUPABASE_COMPANIES,
+    DEFAULT_ENABLE_SUPABASE_SENT_JOBS,
     DEFAULT_LOCATIONS,
     DEFAULT_MAX_AGE_DAYS,
     DEFAULT_MAX_PAGES_PER_COMPANY,
     DEFAULT_SEND_EMAIL,
-    DEFAULT_ENABLE_PLAYWRIGHT_FALLBACK,
     FALLBACK_COMPANIES_FILE,
 )
 from dotenv import load_dotenv
-from .emailer import send_email_from_csv
-from .io_utils import parse_company_targets, write_csv, write_markdown
+from .emailer import send_email
+from .io_utils import parse_company_targets
 from .location import LocationFilter
-from .models import JobResult
+from .models import CompanyTarget, JobResult
 from .service import JobCrawlerService
+from .supabase_store import SupabaseCompaniesStore, SupabaseSentJobsStore, SupabaseStoreError
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -37,18 +40,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_COMPANIES_FILE,
         help="Path to JSON file containing company names and careers URLs.",
-    )
-    parser.add_argument(
-        "--output-csv",
-        type=Path,
-        default=Path("jobs.csv"),
-        help="Output CSV file path.",
-    )
-    parser.add_argument(
-        "--output-md",
-        type=Path,
-        default=Path("jobs.md"),
-        help="Output Markdown file path.",
     )
     parser.add_argument(
         "--max-pages-per-company",
@@ -103,18 +94,41 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def load_company_targets(
+    companies_file: Path,
+    timeout_seconds: int,
+) -> tuple[list[CompanyTarget], str]:
+    if DEFAULT_ENABLE_SUPABASE_COMPANIES:
+        companies_store = SupabaseCompaniesStore.from_env(timeout_seconds=timeout_seconds)
+        if companies_store is not None:
+            try:
+                targets = companies_store.load_company_targets()
+                if targets:
+                    return (targets, "supabase")
+                print(
+                    "Supabase companies table returned 0 enabled rows. Falling back to JSON input.",
+                    file=sys.stderr,
+                )
+            except (SupabaseStoreError, ValueError) as exc:
+                print(f"Supabase companies load failed: {exc}. Falling back to JSON input.", file=sys.stderr)
+
+    targets = parse_company_targets(companies_file)
+    return (targets, str(companies_file))
+
+
 def main() -> int:
     load_dotenv()
     parser = build_arg_parser()
     args = parser.parse_args()
+    timeout_seconds = max(1, args.timeout_seconds)
 
     companies_file = args.companies
     if not companies_file.exists() and FALLBACK_COMPANIES_FILE.exists():
         companies_file = FALLBACK_COMPANIES_FILE
 
     try:
-        targets = parse_company_targets(companies_file)
-    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        targets, target_source = load_company_targets(companies_file, timeout_seconds=timeout_seconds)
+    except (OSError, json.JSONDecodeError, ValueError, SupabaseStoreError) as exc:
         print(f"Error reading company list: {exc}", file=sys.stderr)
         return 2
 
@@ -126,7 +140,7 @@ def main() -> int:
         debug_file_name = os.getenv("JOB_CRAWLER_DEBUG_FILE", "debug.log").strip() or "debug.log"
         debug_file = Path(debug_file_name)
     service = JobCrawlerService(
-        timeout_seconds=max(1, args.timeout_seconds),
+        timeout_seconds=timeout_seconds,
         max_pages_per_company=max(1, args.max_pages_per_company),
         location_filter=location_filter,
         max_age_days=args.max_age_days if args.max_age_days and args.max_age_days > 0 else None,
@@ -134,6 +148,9 @@ def main() -> int:
         debug=debug_mode,
         debug_file=debug_file,
     )
+    sent_jobs_store = None
+    if DEFAULT_ENABLE_SUPABASE_SENT_JOBS:
+        sent_jobs_store = SupabaseSentJobsStore.from_env(timeout_seconds=timeout_seconds)
 
     all_jobs: list[JobResult] = []
     with ThreadPoolExecutor(max_workers=max(1, args.workers)) as executor:
@@ -154,23 +171,40 @@ def main() -> int:
             deduped[key] = job
 
     final_jobs = sorted(deduped.values(), key=lambda item: (item.company.lower(), item.title.lower()))
-    write_csv(args.output_csv, final_jobs)
-    write_markdown(args.output_md, final_jobs)
+    outgoing_jobs = final_jobs
+    if sent_jobs_store is not None:
+        try:
+            outgoing_jobs = sent_jobs_store.filter_unsent_jobs(final_jobs)
+        except SupabaseStoreError as exc:
+            print(f"Supabase sent-jobs check failed: {exc}", file=sys.stderr)
 
     location_note = ""
     if location_filter.enabled:
         location_note = f" after location filtering ({', '.join(raw_locations)})"
 
     print(
-        f"Saved {len(final_jobs)} jobs to {args.output_csv} and {args.output_md} "
+        f"Prepared {len(outgoing_jobs)} jobs for email "
         f"from {len(targets)} companies{location_note}."
     )
+    print(f"Loaded company targets from {target_source}.")
+    if sent_jobs_store is not None:
+        skipped_count = len(final_jobs) - len(outgoing_jobs)
+        if skipped_count > 0:
+            print(f"Skipped {skipped_count} jobs already sent earlier.")
 
     if args.send_email:
-        send_email_from_csv(
-            csv_path=args.output_csv,
+        send_email(
+            jobs=outgoing_jobs,
             subject_prefix=args.email_subject,
             recipients=args.email_to or DEFAULT_EMAIL_RECIPIENTS,
         )
-        print("Email sent.")
+        if sent_jobs_store is not None and outgoing_jobs:
+            try:
+                sent_jobs_store.store_sent_jobs(outgoing_jobs)
+            except SupabaseStoreError as exc:
+                print(f"Supabase sent-jobs update failed: {exc}", file=sys.stderr)
+        if outgoing_jobs:
+            print("Email sent.")
+        else:
+            print("Email sent with 'No new jobs posted' content.")
     return 0
