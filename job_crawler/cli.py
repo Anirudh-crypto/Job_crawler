@@ -151,6 +151,8 @@ def main() -> int:
     sent_jobs_store = None
     if DEFAULT_ENABLE_SUPABASE_SENT_JOBS:
         sent_jobs_store = SupabaseSentJobsStore.from_env(timeout_seconds=timeout_seconds)
+        if sent_jobs_store is None:
+            print("Supabase sent-jobs dedupe disabled or not configured.", file=sys.stderr)
 
     all_jobs: list[JobResult] = []
     with ThreadPoolExecutor(max_workers=max(1, args.workers)) as executor:
@@ -189,8 +191,7 @@ def main() -> int:
     print(f"Loaded company targets from {target_source}.")
     if sent_jobs_store is not None:
         skipped_count = len(final_jobs) - len(outgoing_jobs)
-        if skipped_count > 0:
-            print(f"Skipped {skipped_count} jobs already sent earlier.")
+        print(f"Supabase sent-jobs dedupe active. {skipped_count} jobs already existed.")
 
     if args.send_email:
         send_email(
@@ -201,6 +202,7 @@ def main() -> int:
         if sent_jobs_store is not None and outgoing_jobs:
             try:
                 sent_jobs_store.store_sent_jobs(outgoing_jobs)
+                print(f"Stored {len(outgoing_jobs)} emailed jobs in Supabase sent-jobs table.")
             except SupabaseStoreError as exc:
                 print(f"Supabase sent-jobs update failed: {exc}", file=sys.stderr)
         if outgoing_jobs:

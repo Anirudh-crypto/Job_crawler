@@ -73,7 +73,13 @@ class SupabaseTableStore:
     def __init__(self, config: SupabaseStoreConfig) -> None:
         self.config = config
         self.session = requests.Session()
-        self.session.headers.update({"apikey": self.config.api_key})
+        self.session.headers.update(
+            {
+                "apikey": self.config.api_key,
+                "Authorization": f"Bearer {self.config.api_key}",
+                "Accept": "application/json",
+            }
+        )
 
     def _table_url(self, table_name: str) -> str:
         return f"{self.config.url}/rest/v1/{table_name}"
@@ -114,8 +120,12 @@ class SupabaseSentJobsStore(SupabaseTableStore):
         for chunk in self._chunked(rows, size=100):
             response = self.session.post(
                 self._table_url(self.config.sent_jobs_table),
+                params={"on_conflict": "job_key"},
                 json=chunk,
-                headers={"Content-Type": "application/json", "Prefer": "return=minimal"},
+                headers={
+                    "Content-Type": "application/json",
+                    "Prefer": "resolution=merge-duplicates,return=minimal",
+                },
                 timeout=self.config.timeout_seconds,
             )
             self._raise_for_status(response, "insert sent jobs")
