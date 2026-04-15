@@ -6,8 +6,9 @@ from pathlib import Path
 DEFAULT_COMPANIES_FILE = Path("companies.json")
 FALLBACK_COMPANIES_FILE = Path("companies.example.json")
 
-DEFAULT_LOCATIONS = ["Germany", "Bengaluru"]
+DEFAULT_LOCATIONS = ["Germany", "Bengaluru", "Luxembourg", "Netherlands"]
 DEFAULT_MAX_AGE_DAYS = 2
+DEFAULT_MAX_EXPERIENCE_YEARS = 4
 DEFAULT_MAX_PAGES_PER_COMPANY = 20
 DEFAULT_ENABLE_PLAYWRIGHT_FALLBACK = True
 DEFAULT_ENABLE_SUPABASE_SENT_JOBS = True

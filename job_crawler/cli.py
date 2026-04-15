@@ -16,6 +16,7 @@ from .config import (
     DEFAULT_ENABLE_SUPABASE_SENT_JOBS,
     DEFAULT_LOCATIONS,
     DEFAULT_MAX_AGE_DAYS,
+    DEFAULT_MAX_EXPERIENCE_YEARS,
     DEFAULT_MAX_PAGES_PER_COMPANY,
     DEFAULT_SEND_EMAIL,
     FALLBACK_COMPANIES_FILE,
@@ -144,6 +145,7 @@ def main() -> int:
         max_pages_per_company=max(1, args.max_pages_per_company),
         location_filter=location_filter,
         max_age_days=args.max_age_days if args.max_age_days and args.max_age_days > 0 else None,
+        max_experience_years=DEFAULT_MAX_EXPERIENCE_YEARS,
         enable_playwright_fallback=DEFAULT_ENABLE_PLAYWRIGHT_FALLBACK,
         debug=debug_mode,
         debug_file=debug_file,
@@ -183,10 +185,13 @@ def main() -> int:
     location_note = ""
     if location_filter.enabled:
         location_note = f" after location filtering ({', '.join(raw_locations)})"
+    experience_note = ""
+    if DEFAULT_MAX_EXPERIENCE_YEARS and DEFAULT_MAX_EXPERIENCE_YEARS > 0:
+        experience_note = f" and experience filter (<{DEFAULT_MAX_EXPERIENCE_YEARS} years)"
 
     print(
         f"Prepared {len(outgoing_jobs)} jobs for email "
-        f"from {len(targets)} companies{location_note}."
+        f"from {len(targets)} companies{location_note}{experience_note}."
     )
     print(f"Loaded company targets from {target_source}.")
     if sent_jobs_store is not None:

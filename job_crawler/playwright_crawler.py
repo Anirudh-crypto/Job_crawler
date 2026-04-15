@@ -347,6 +347,7 @@ class PlaywrightCrawler:
                     location=location,
                     job_id=job_id,
                     careers_url=careers_url,
+                    experience_text=combined,
                     posted_at=posted_at,
                 )
             )

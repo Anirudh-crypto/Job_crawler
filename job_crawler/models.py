@@ -21,4 +21,5 @@ class JobResult:
     location: str = ""
     job_id: str = ""
     careers_url: str = ""
+    experience_text: str = ""
     posted_at: datetime | None = None

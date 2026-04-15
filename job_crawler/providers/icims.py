@@ -46,7 +46,7 @@ class IcimsProvider:
                 drop_fragment=False,
                 trim_trailing_slash=False,
             )
-            location, posted_at = self._extract_context(anchor, title)
+            location, posted_at, experience_text = self._extract_context(anchor, title)
             jobs.append(
                 JobResult(
                     company=target.name,
@@ -56,17 +56,18 @@ class IcimsProvider:
                     location=location,
                     job_id=extract_job_id(f"{title} {job_url}"),
                     careers_url=target.careers_url,
+                    experience_text=experience_text,
                     posted_at=posted_at,
                 )
             )
         return jobs
 
-    def _extract_context(self, anchor, title: str) -> tuple[str, datetime | None]:
+    def _extract_context(self, anchor, title: str) -> tuple[str, datetime | None, str]:
         parent = anchor.find_parent("div", class_="iCIMS_JobsTable")
         if not parent:
             parent = anchor.find_parent("div")
         if not parent:
-            return "", None
+            return "", None, title
         context = parent.get_text(" | ", strip=True)
         parts = [p.strip() for p in context.split("|") if p.strip()]
         normalized_title = normalize_text(title)
@@ -78,4 +79,4 @@ class IcimsProvider:
                 posted_at = parse_human_date(part)
             if not location and "," in part:
                 location = part
-        return location, posted_at
+        return location, posted_at, " ".join([title, context]).strip()
