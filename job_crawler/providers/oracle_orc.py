@@ -77,6 +77,23 @@ class OracleOrcProvider:
                     "PrimaryLocationCity",
                 ],
             )
+            experience_text = " ".join(
+                part
+                for part in [
+                    title,
+                    self._get_value(
+                        item,
+                        [
+                            "Description",
+                            "JobDescription",
+                            "ShortDescription",
+                            "Qualifications",
+                            "DetailedDescription",
+                        ],
+                    ),
+                ]
+                if part
+            )
             posted_at = self._parse_posted_at(item)
             job_id = self._get_value(item, ["RequisitionNumber", "JobId", "Id", "id"]) or extract_job_id(
                 f"{title} {job_url}"
@@ -96,6 +113,7 @@ class OracleOrcProvider:
                     location=location,
                     job_id=job_id,
                     careers_url=target.careers_url,
+                    experience_text=experience_text,
                     posted_at=posted_at,
                 )
             )

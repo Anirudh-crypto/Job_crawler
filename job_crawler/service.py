@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from .ats_resolver import AtsResolver
 from .dates import is_recent
+from .experience import ExperienceFilter
 from .html_crawler import HtmlCrawler
 from .http_client import HttpClient
 from .location import LocationFilter
@@ -29,6 +30,7 @@ class JobCrawlerService:
         max_pages_per_company: int,
         location_filter: LocationFilter,
         max_age_days: int | None,
+        max_experience_years: int | None,
         enable_playwright_fallback: bool = True,
         debug: bool = False,
         debug_file: Path | None = None,
@@ -37,6 +39,7 @@ class JobCrawlerService:
         self.max_pages_per_company = max_pages_per_company
         self.location_filter = location_filter
         self.max_age_days = max_age_days
+        self.experience_filter = ExperienceFilter(max_experience_years)
         self.enable_playwright_fallback = enable_playwright_fallback
         self.debug = debug
         self.debug_file = debug_file
@@ -117,7 +120,11 @@ class JobCrawlerService:
         return list(deduped.values())
 
     def _filter_jobs(self, jobs: list[JobResult]) -> list[JobResult]:
-        filtered = [job for job in jobs if self.location_filter.matches_job(job)]
+        filtered = [
+            job
+            for job in jobs
+            if self.location_filter.matches_job(job) and self.experience_filter.matches_job(job)
+        ]
         if self.max_age_days is not None and self.max_age_days > 0:
             recent = [job for job in filtered if is_recent(job.posted_at, self.max_age_days)]
             if recent:

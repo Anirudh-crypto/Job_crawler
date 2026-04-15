@@ -95,6 +95,7 @@ python crawler.py --companies companies.example.json --location Germany --locati
 
 - The crawler no longer writes job output files.
 - Results are kept in memory and sent directly by email.
+- By default, the crawler keeps early-career roles and filters out jobs that clearly ask for `4+ years` of experience or have senior-title signals.
 - When Supabase is configured, only jobs that have not already been emailed before for the same `company + title + job_id` are sent.
 - If there are no new jobs, email is still sent with the message `No new jobs posted.`
 

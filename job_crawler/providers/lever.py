@@ -39,6 +39,16 @@ class LeverProvider:
             title = str(item.get("text", "")).strip()
             url = str(item.get("hostedUrl", "")).strip()
             location = str(item.get("categories", {}).get("location", "")).strip()
+            experience_text = " ".join(
+                part.strip()
+                for part in [
+                    title,
+                    str(item.get("descriptionPlain", "") or ""),
+                    str(item.get("description", "") or ""),
+                    str(item.get("additionalPlain", "") or ""),
+                ]
+                if isinstance(part, str) and part.strip()
+            )
             posted_at = parse_epoch_ms(item.get("createdAt")) or parse_iso_datetime(
                 str(item.get("createdAt") or "")
             )
@@ -63,6 +73,7 @@ class LeverProvider:
                     location=location,
                     job_id=str(item.get("reqCode") or item.get("id") or "") or extract_job_id(title),
                     careers_url=target.careers_url,
+                    experience_text=experience_text,
                     posted_at=posted_at,
                 )
             )

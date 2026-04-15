@@ -44,6 +44,7 @@ class GreenhouseProvider:
             title = str(item.get("title", "")).strip()
             url = str(item.get("absolute_url", "")).strip()
             location = str(item.get("location", {}).get("name", "")).strip()
+            experience_text = str(item.get("content", "") or item.get("internal_job_id", "") or "").strip()
             posted_at = parse_iso_datetime(str(item.get("updated_at") or item.get("created_at") or ""))
             if not title or not url:
                 continue
@@ -66,6 +67,7 @@ class GreenhouseProvider:
                     location=location,
                     job_id=str(item.get("requisition_id") or item.get("id") or "") or extract_job_id(title),
                     careers_url=target.careers_url,
+                    experience_text=f"{title} {experience_text}".strip(),
                     posted_at=posted_at,
                 )
             )

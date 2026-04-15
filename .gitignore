@@ -8,6 +8,7 @@
 *.pdf
 *.log
 .env
+*.json
 
 # Ignore below folders
 

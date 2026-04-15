@@ -270,6 +270,7 @@ class HtmlCrawler:
                         location=location,
                         job_id=extract_job_id(f"{title} {job_url} {description}"),
                         careers_url=careers_url,
+                        experience_text=combined,
                         posted_at=posted_at,
                     )
                 )
@@ -335,6 +336,7 @@ class HtmlCrawler:
                     location=self._extract_location_from_anchor(anchor, text),
                     job_id=extract_job_id(f"{text} {output_url}"),
                     careers_url=careers_url,
+                    experience_text=self._extract_context_text(anchor),
                     posted_at=None,
                 )
             )
@@ -368,6 +370,17 @@ class HtmlCrawler:
                 if candidate:
                     return candidate
 
+        return ""
+
+    def _extract_context_text(self, anchor: Tag) -> str:
+        current: Tag | None = anchor
+        for _ in range(3):
+            if current is None:
+                break
+            text = current.get_text(" ", strip=True)
+            if text and len(text) <= 800:
+                return text
+            current = current.parent if isinstance(current.parent, Tag) else None
         return ""
 
     def _sanitize_location_text(self, text: str, title_text: str) -> str:
