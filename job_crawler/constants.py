@@ -16,6 +16,9 @@ TRACKING_QUERY_KEYS = {
 }
 
 RELEVANT_PHRASES = [
+    'data engineering',
+    'Internship',
+    'Master thesis',
     "machine learning",
     "ml engineer",
     "data science",
@@ -37,20 +40,15 @@ RELEVANT_PHRASES = [
 ]
 
 ROLE_WORDS = [
+    'internship',
+    'Master thesis',
     "engineer",
     "scientist",
     "analyst",
     "researcher",
-    "manager",
-    "director",
-    "architect",
     "intern",
     "specialist",
     "developer",
-    "lead",
-    "principal",
-    "staff",
-    "head",
     "consultant",
 ]
 
